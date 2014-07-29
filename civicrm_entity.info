@@ -1,8 +1,11 @@
 name = CiviCRM Entities
 description = "Declare CiviCRM entities as Drupal entities"
 dependencies[] = civicrm
-files[] =  civicrm_entity.info.inc
 dependencies[] = entity
 package = CiviCRM
 core = 7.x
-version = 4.2.alpha
+files[] =  CivicrmEntityController.inc
+files[] =  CivicrmEntityDefaultViewsController.inc
+files[] =  CivicrmEntityUIController.inc
+files[] =  CivicrmEntityMetadataController.inc
+
