@@ -6,26 +6,26 @@
  */
 
 /**
- * Implements hook_menu().
- *
- * It may be that civicrm drupals entities could be 'fieldable' -
- * refer to drupal fields with the linkages held in drupal? This code
- * is not doing much right now.
+ * Implements hook_menu_alter().
+ * @todo - still making sense of this - I used BangPounds work to get started on this & keep trying to remove it but seems to be maybe required?
+ * @param array $items Menu items
  */
-function civicrm_entity_menu() {
-  $items['admin/structure/types/manage/civicrm_relationship_type'] = array(
-    'title' => 'CiviCRM Relationship Type Settings',
-    'description' => 'Configure the settings for the CiviCRM Relationship Type.',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('civicrm_entity_settings'),
-    'access arguments' => array('administer CiviCRM'),
-    'weight' => -10,
-  );
-  $items['admin/civicrm_entity/settings'] = array(
-    'title' => 'Settings',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-    'weight' => -10,
-  );
+function civicrm_entity_menu_alter(&$items) {
+  foreach (entity_get_info() as $entity_name => $entity_info) {
+    if ($entity_info['module'] == 'civicrm_entity') {
+      foreach ($entity_info['bundles'] as $file_type => $bundle_info) {
+        if (isset($bundle_info['admin'])) {
+          // Get the base path and access.
+          $path = $bundle_info['admin']['path'];
+          $items[$path] = $items[$path . '/fields'];
+          $items[$path]['type'] = MENU_NORMAL_ITEM;
+          $items[$path]['title'] = $entity_info['label'];
+          $items[$path]['description'] = t('CiviCRM @entity entity', array('@entity' => $entity_name));
+          $items[$path . '/fields']['type'] = MENU_DEFAULT_LOCAL_TASK;
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -189,11 +189,22 @@ function civicrm_entity_entity_info() {
       'optional' => TRUE,
       'label' => "CiviCRM " . ucwords($civicrm_entity),
       'module' => 'civicrm_entity',
+      'entity class' => 'Entity',
       'controller class' => 'CivicrmEntityController',
       'metadata controller class' => 'CivicrmEntityMetadataController',
       'views controller class' => 'CiviCRMEntityDefaultViewsController',
-      'fieldable' => FALSE,
+      'fieldable' => TRUE,
       'access callback' => 'civicrm_entity_access',
+      'extra fields controller class' => 'EntityDefaultExtraFieldsController',
+      'admin ui' => array(
+        'path' => $drupal_entity,
+        'controller class' => 'CivicrmEntityUIController',
+      ),
+      /*'admin ui' => array(
+        'path' => 'civicrm_entity/'. $drupal_entity,
+        'controller class' => 'CivicrmEntityUIController',
+        'file' => 'civicrm_entity.form.inc',
+      ),*/
       'bundles' => array(
         $drupal_entity => array(
           'label' => t('CiviCRM @entity', array('@entity')),
@@ -206,7 +217,7 @@ function civicrm_entity_entity_info() {
       'view modes' => array(
         'full' => array(
           'label' => t('Default'),
-          'custom settings' => FALSE,
+          'custom settings' => TRUE,
         ),
       ),
       'entity keys' => array(
@@ -224,6 +235,77 @@ function civicrm_entity_entity_info() {
   // until more testing has been done.
   $info['civicrm_relationship_type']['views controller class'] = 'CiviCRMEntityDefaultViewsController';
   return $info;
+}
+
+
+function civicrm_entity_form($form, &$form_state, $entity, $op, $entity_type) {
+  // Add the field related form elements.
+  $form_state['entity'] = $entity;
+  field_attach_form($entity_type, $entity, $form, $form_state);
+
+  $form['actions'] = array(
+    '#type' => 'container',
+    '#attributes' => array('class' => array('form-actions')),
+    '#weight' => 400,
+  );
+
+  $form['#validate'] = array();
+  $form['#submit'] = array();
+  $form['#validate'][] = 'civicrm_entity_form_validate';
+  $form['#submit'][] = 'civicrm_entity_form_submit';
+
+  // We add the form's #submit array to this button along with the actual submit
+  // handler to preserve any submit handlers added by a form callback_wrapper.
+  $submit = array();
+
+  if (!empty($form['#submit'])) {
+    $submit += $form['#submit'];
+  }
+
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+    '#submit' => $submit + array(),
+  );
+  // We append the validate handler to #validate in case a form callback_wrapper
+  // is used to add validate handlers earlier.
+  return $form;
+}
+
+/**
+ * Form API validate callback for the entity form
+ */
+function civicrm_entity_form_validate(&$form, &$form_state) {
+  $entity = $form_state['entity'];
+  $entity_type = $form_state['entity_type'];
+
+  // Notify field widgets to validate their data.
+  field_attach_form_validate($entity_type, $entity, $form, $form_state);
+}
+
+
+/**
+ * Form API submit callback for the entity form.
+ *
+ * @todo remove hard-coded link
+ */
+function civicrm_entity_form_submit(&$form, &$form_state) {
+  $entity_type = $form_state['entity_type'];
+  $entity = entity_ui_controller($entity_type)->entityFormSubmitBuildEntity($form, $form_state);
+  // Save the model and go back to the list of entities
+
+  // Add in created and changed times.
+  if ($entity->is_new = isset($entity->is_new) ? $entity->is_new : 0) {
+    $entity->created = time();
+  }
+
+  $entity->changed = time();
+
+  $entity->save();
+  $t_args = array(
+    '%label' => entity_label($entity_type, $entity),
+  );
+  drupal_set_message(t('Drupal fields on %label have been updated.', $t_args));
 }
 
 /**
@@ -317,6 +399,7 @@ function _civicrm_entity_labels($entity) {
   $labels = array(
     'civicrm_event' => 'title',
     'civicrm_contact' => 'display_name',
+    'civicrm_contribution' => 'source',
     'civicrm_participant' => 'source',
     'civicrm_relationship' => 'description',
     'civicrm_relationship_type' => 'description',
@@ -694,6 +777,39 @@ function civicrm_entity_action_load_create_user($entity, $is_active = 0, $notify
 }
 
 /**
+ * @param $user
+ *
+ * @param null $email
+ *
+ * @return mixed
+ */
+function civicrm_entity_action_load_create_contact($user, $email = NULL) {
+  try {
+    return civicrm_entity_action_load_contact($user);
+  }
+  catch (CiviCRM_API3_Exception $e) {
+    $ufMatch = CRM_Core_BAO_UFMatch::synchronizeUFMatch($user, $user->uid, ($email ? $email : $user->mail), 'Drupal', FALSE, 'Individual');
+    return entity_load('civicrm_contact', $ufMatch->contact_id);
+  }
+
+}
+
+/**
+ * @param $user
+ *
+ * @return mixed
+ * @throws CiviCRM_API3_Exception
+ */
+function civicrm_entity_action_load_contact($user) {
+  $contact_id = civicrm_api3('uf_match', 'getsingle', array(
+      'uf_id' => $user->uid,
+      'return' => 'contact_id',
+      'domain_id' => CRM_Core_Config::domainID()
+    ));
+  return entity_load('civicrm_contact', $contact_id);
+}
+
+/**
  * Implement the post hook and fire the corresponding rules event.
  *
  * @param $op
@@ -799,10 +915,6 @@ function civicrm_entity_user_contact_get($data, array $options, $name, $type, $i
   if (!module_exists('civicrm') || !function_exists('civicrm_initialize')) {
     return;
   }
-  if (!civicrm_initialize()) {
-    return;
-  }
-
   $domain_id = civicrm_api('domain', 'getvalue', array(
     'version' => 3,
     'return' => 'id',
