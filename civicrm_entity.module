@@ -25,6 +25,15 @@ function civicrm_entity_menu() {
     'file path' => drupal_get_path('module', 'system'),
     'file' => 'system.admin.inc',
   );
+  $items['admin/structure/civicrm-entity/settings'] = array(
+    'title' => 'Configure CiviCRM Entity',
+    'description' => 'Configure CiviCRM settings, such as enabled entities',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('civicrm_entity_admin_settings_form'),
+    'access arguments' => array('administer CiviCRM Entity'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'civicrm_entity.admin_form.inc',
+  );
   $items['civicrm-entity/autocomplete/%'] = array(
     'title' => 'CiviCRM entity autocomplete',
     'page callback' => 'civicrm_entity_autocomplete',
@@ -247,12 +256,14 @@ function civicrm_entity_views_data_alter(&$data) {
   $civicrm_entity_types = civicrm_entity_get_supported_entity_info();
 
   foreach ($civicrm_entity_types as $civicrm_entity_type => $info) {
-    foreach ($data[$civicrm_entity_type] as $property => $prop_info) {
-      // unset auto-generated custom field views handlers due to civicrm_entity entity metadata coming from API getfields call
-      if (strpos($property, 'custom_') === 0) {
-        $name_array = explode('_', $property);
-        if(isset($name_array[1]) && is_numeric($name_array[1])) {
-          unset($data[$civicrm_entity_type][$property]);
+    if(!empty($data[$civicrm_entity_type])) {
+      foreach ($data[$civicrm_entity_type] as $property => $prop_info) {
+        // unset auto-generated custom field views handlers due to civicrm_entity entity metadata coming from API getfields call
+        if (strpos($property, 'custom_') === 0) {
+          $name_array = explode('_', $property);
+          if (isset($name_array[1]) && is_numeric($name_array[1])) {
+            unset($data[$civicrm_entity_type][$property]);
+          }
         }
       }
     }
@@ -1976,15 +1987,9 @@ function civicrm_entity_supported_entities_info() {
 }
 
 /**
- * Whitelist of enabled entities. We don't have a compelling reason for not including all entities
- * but some entities are fairly non-standard and of course the rule hook would instantiate rules
- * more often if all were enabled.
- *
- * The whitelist approach is mostly out of caution
- *
- * @return array of enabled entities keyed by the drupal entity name
+ * We gather a list entities that are available, either as hardcoded in this module, or provided by the hook
  */
-function _civicrm_entity_enabled_entities() {
+function _civicrm_entity_available_entities() {
   $civicrm_entity_info = civicrm_entity_get_supported_entity_info();
   $whitelist = array();
   foreach ($civicrm_entity_info as $drupal_entity => $data) {
@@ -1995,6 +2000,30 @@ function _civicrm_entity_enabled_entities() {
 
   _civicrm_enabled_entity_alter_whitelist($whitelist);
   return $whitelist;
+}
+
+
+/**
+ * Whitelist of enabled entities. We don't have a compelling reason for not including all entities
+ * but some entities are fairly non-standard and of course the rule hook would instantiate rules
+ * more often if all were enabled.
+ *
+ * The whitelist approach is mostly out of caution
+ *
+ * @return array of enabled entities keyed by the drupal entity name
+ */
+function _civicrm_entity_enabled_entities() {
+  $available_entities = _civicrm_entity_available_entities();
+  $selected_entities = variable_get('civicrm_entity_admin_enabled_entities', array_keys($available_entities));
+
+  $enabled_entities = array();
+  foreach ($available_entities as $entity_type => $api_entity) {
+    if (!empty($selected_entities[$entity_type])) {
+      $enabled_entities[$entity_type] = $api_entity;
+    }
+  }
+
+  return $enabled_entities;
 }
 
 /**
