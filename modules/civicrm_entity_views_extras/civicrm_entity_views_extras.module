@@ -7,8 +7,6 @@
 
 /**
  * Implements hook_views_api().
- *
- * @return array
  */
 function civicrm_entity_views_extras_views_api() {
   return array(
@@ -511,7 +509,6 @@ function civicrm_entity_views_extras_views_data() {
     ),
   );
 
-
   $data['civicrm_contact']['civicrm_im'] = array(
     'title' => t('IM'),
     'help' => t('Instant Message Accounts'),
@@ -541,7 +538,7 @@ function civicrm_entity_views_extras_views_data() {
 
   $data['civicrm_event']['event_is_full'] = array(
     'title' => t('Event Is Full'),
-    'help' => t('Provided by CiviCRM Entity: 1 if event is full 0 otherwhise.'),
+    'help' => t('Provided by CiviCRM Entity: 1 if event is full 0 otherwise.'),
     'field' => array(
       'handler' => 'civicrm_entity_views_extras_handler_event_is_full',
     ),
@@ -552,8 +549,6 @@ function civicrm_entity_views_extras_views_data() {
 
 /**
  * Implements hook_views_data_alter().
- *
- * @param $data
  */
 function civicrm_entity_views_extras_views_data_alter(&$data) {
   if(!empty($data['civicrm_im'])) {
