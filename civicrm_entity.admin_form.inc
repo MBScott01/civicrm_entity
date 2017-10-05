@@ -15,17 +15,20 @@
 function civicrm_entity_admin_settings_form($form, &$form_state) {
   $available_entities = _civicrm_entity_available_entities();
 
+  $available_entities_option_set = _civicrm_entity_available_entities_get_option_set($available_entities);
+
   $options = array();
   foreach ($available_entities as $entity_type => $api_entity) {
     $options[$entity_type] = ucwords(str_replace('_', ' ', $api_entity));
   }
 
-  
+  $default_value = variable_get('civicrm_entity_admin_enabled_entities', $available_entities_option_set);
+
   $form['civicrm_entity_admin_enabled_entities']  = array(
     '#type' => 'checkboxes',
     '#title' => 'Enabled Entities',
     '#description' => 'Check all CiviCRM API entities that you would like to expose as Drupal entity types.',
-    '#default_value' => variable_get('civicrm_entity_admin_enabled_entities', array_keys($available_entities)),
+    '#default_value' => $default_value,
     '#options' => $options,
   );
 
@@ -33,6 +36,7 @@ function civicrm_entity_admin_settings_form($form, &$form_state) {
     '#type' => 'submit',
     '#value' => t('Save settings'),
   );
+
   return $form;
 }
 

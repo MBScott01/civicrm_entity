@@ -286,7 +286,6 @@ function civicrm_entity_views_data_alter(&$data) {
       }
     }
   }
-
 }
 
 
@@ -2014,7 +2013,9 @@ function _civicrm_entity_available_entities() {
  */
 function _civicrm_entity_enabled_entities() {
   $available_entities = _civicrm_entity_available_entities();
-  $selected_entities = variable_get('civicrm_entity_admin_enabled_entities', array_keys($available_entities));
+  $available_entities_option_set = _civicrm_entity_available_entities_get_option_set($available_entities);
+
+  $selected_entities = variable_get('civicrm_entity_admin_enabled_entities', $available_entities_option_set);
 
   $enabled_entities = array();
   foreach ($available_entities as $entity_type => $api_entity) {
@@ -2024,6 +2025,23 @@ function _civicrm_entity_enabled_entities() {
   }
 
   return $enabled_entities;
+}
+
+/**
+ * Build an option set array used by the configure CiviCRM Entity form, and various submodules
+ *
+ * @param $available_entities
+ *
+ * @return array
+ */
+function _civicrm_entity_available_entities_get_option_set($available_entities) {
+  $available_entities_option_set = array();
+  if (!empty($available_entities)) {
+    foreach ($available_entities as $entity_type => $api_entity) {
+      $available_entities_option_set[$entity_type] = $entity_type;
+    }
+  }
+  return $available_entities_option_set;
 }
 
 /**

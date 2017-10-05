@@ -1,0 +1,22 @@
+<?php
+
+/**
+ * Implements hook_enable().
+ */
+function civicrm_case_activity_reference_field_enable() {
+  $selected_entities = variable_get('civicrm_entity_admin_enabled_entities', array());
+  $update = FALSE;
+  if (empty($selected_entities['civicrm_case'])) {
+    $selected_entities['civicrm_case'] = 'civicrm_case';
+    $update = TRUE;
+  }
+  if (empty($selected_entities['civicrm_activity'])) {
+    $selected_entities['civicrm_activity'] = 'civicrm_activity';
+    $update = TRUE;
+  }
+  if ($update) {
+    variable_set('civicrm_entity_admin_enabled_entities', $selected_entities);
+    entity_info_cache_clear();
+    menu_rebuild();
+  }
+}
