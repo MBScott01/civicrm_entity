@@ -3397,8 +3397,8 @@ function civicrm_entity_rules_assign_contact_group_options_list() {
        $options[$key] = $value['title'];
     }
  }
-    return $options;
-
+  return $options;
+}
 
 /**
  * Callback for Contact is of subtype condition, Contact Sub Type options list
